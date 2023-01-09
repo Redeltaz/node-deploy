@@ -1,0 +1,61 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+    # Forward port 8080 of the vm to be able to access it on local machine
+    config.vm.network "forwarded_port", guest: 8080, host: 8080
+
+    # Do not pay attention to this parameter
+    if Vagrant.has_plugin?("vagrant-vbguest")
+      config.vm.provider :virtualbox do |vb|
+        config.vbguest.auto_update = false
+      end
+    end
+
+    config.vm.define "node_deploy" do |server|
+      # Run vagrant vm on ubuntu
+      server.vm.box = "ubuntu/bionic64"
+      config.vm.synced_folder "../web-app","/home/web-app"
+      config.ssh.insert_key = false
+      #
+      # Specify the VM specs when using the Virtualbox provisioner
+      server.vm.provider "virtualbox" do |vb|
+        vb.name =  "node_deploy"
+        # VM RAM in MB
+        vb.memory = 4096
+        # VM CPUs
+        vb.cpus = 2
+      end
+    end
+
+    ## Use Vagrant Ansible provisioner to execute multiple playbooks
+    config.vm.provision "ansible_local" do |ansible|
+      # Update and upgrade all the packages of the vm
+      ansible.playbook = "playbooks/update-packages.yml"
+      ansible.become = true
+    end
+
+    config.vm.provision "ansible_local" do |ansible|
+      # install Node js runtime
+      ansible.playbook = "playbooks/install-runtime.yml"
+      ansible.become = true
+    end
+
+    config.vm.provision "ansible_local" do |ansible|
+      # Install mysql and setup everything (user, database, table...)
+      ansible.playbook = "playbooks/install-database.yml"
+      ansible.become = true
+    end
+
+    config.vm.provision "ansible_local" do |ansible|
+      # Install docker and docker compose
+      ansible.playbook = "playbooks/install-docker.yml"
+      ansible.become = true
+    end
+
+    config.vm.provision "ansible_local" do |ansible|
+      # Launch web application
+      ansible.playbook = "playbooks/launch-web-app.yml"
+      ansible.become = true
+    end
+end

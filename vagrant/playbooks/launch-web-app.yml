@@ -1,0 +1,9 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Launch web app
+      shell:
+        cmd: "docker-compose up --build -d"
+        chdir: /home/web-app/

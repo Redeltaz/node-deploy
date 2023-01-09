@@ -1,0 +1,66 @@
+---
+- hosts: all
+  become: yes
+
+  vars: 
+    # By default python2 is installed but we prefer python3 for all the actions
+    - ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Install MySQL
+      apt:
+        update_cache: yes
+        name: 
+          - python3
+          - python3-pip
+          - mysql-server
+        state: present
+
+    # python library needed to access database 
+    - name: Install pymysql
+      pip:
+        name: pymysql
+        state: present
+
+    - name: Start MySQL
+      shell: "service mysql start"
+
+    - name: Set root password
+      mysql_user: 
+        name: root
+        password: root
+        priv: '*.*:ALL,GRANT'
+        host: 'localhost'
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        state: present
+
+    - name: Create user
+      mysql_user:
+        name: user
+        password: password
+        host: 'localhost'
+        login_user: root
+        login_password: root
+        state: present
+        priv: '*.*:ALL,GRANT'
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create db
+      mysql_db:
+        login_user: user
+        login_password: password
+        name: simpleapi
+        state: present
+
+    - name: Import db
+      copy:
+        src: ./mysql-setup/setup.sql
+        dest: /tmp/setup.sql
+
+    - name: Execute db
+      mysql_db:
+        name: simpleapi
+        state: import
+        target: /tmp/setup.sql
+        login_user: user
+        login_password: password
